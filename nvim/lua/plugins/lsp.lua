@@ -1,28 +1,79 @@
--- Neovim LSP configuration with Conform for formatting, Mason for managing LSP servers,
--- cmp for autocompletion,
--- LuaSnip for snippets,
--- fidget for LSP progress,
--- and various language servers setup.
+-- Neovim LSP configuration with
+-- - Mason for managing LSP servers,
+-- - Conform for formatting,
+-- - blink lcmp for autocompletion,
+-- - LuaSnip for snippets,
+-- - fidget for LSP progress,
+-- - and various language servers setup.
+-- This file is heavilty inspired by Kickstart.nvim
 
 return {
 	"neovim/nvim-lspconfig",
 	dependencies = {
+		{ "mason-org/mason.nvim", opts = {} }, -- same as `require("mason").setup({})`
+		"mason-org/mason-lspconfig.nvim",
+		"WhoIsSethDaniel/mason-tool-installer.nvim",
 		"stevearc/conform.nvim",
-		"williamboman/mason.nvim",
-		"williamboman/mason-lspconfig.nvim",
 		"hrsh7th/cmp-nvim-lsp",
-		"hrsh7th/cmp-buffer",
-		"hrsh7th/cmp-path",
-		"hrsh7th/cmp-cmdline",
 		"hrsh7th/nvim-cmp",
-		"L3MON4D3/LuaSnip",
-		"rafamadriz/friendly-snippets",
-		"saadparwaiz1/cmp_luasnip",
-		"j-hui/fidget.nvim",
+		"saghen/blink.cmp",
+		{
+			"L3MON4D3/LuaSnip",
+			dependencies = {
+				"rafamadriz/friendly-snippets",
+			},
+			config = function()
+				require("luasnip").config.set_config({
+					history = true,
+					updateevents = "TextChanged,TextChangedI",
+				})
+
+                -- Load snippets from friendly-snippets and custom Lua snippets
+				require("luasnip.loaders.from_vscode").lazy_load()
+				require("luasnip.loaders.from_lua").lazy_load({ paths = "~/.config/nvim/lua/snippets" })
+			end,
+		},
+		{ "j-hui/fidget.nvim", opts = {} },
 	},
 
 	config = function()
-		-------------------------------
+		-- Setup blink.cmp for more power completions
+		local capabilities = require("blink.cmp").get_lsp_capabilities()
+
+		-- Always run when any LSP attaches
+		vim.api.nvim_create_autocmd("LspAttach", {
+			group = vim.api.nvim_create_augroup("on-lsp-attach", { clear = true }),
+			callback = function(event)
+				local bufnr = event.buf
+				local client = vim.lsp.get_client_by_id(event.data.client_id)
+
+				-- Reusable function to set keymaps for LSP
+				local map = function(mode, keys, func, desc)
+					mode = mode or "n"
+					vim.keymap.set(mode, keys, func, { buffer = event.buf, desc = "LSP: " .. desc })
+				end
+
+				-- Keymaps for LSP functionality
+				map("n", "K", vim.lsp.buf.hover, "Hover Doc")
+				map("n", "<leader>rn", vim.lsp.buf.rename, "Rename Symbol")
+				map("n", "<leader>a", vim.lsp.buf.code_action, "Code Action")
+				map("n", "<leader>qf", function()
+					vim.lsp.buf.code_action({ apply = true, context = { only = { "quickfix" } } })
+				end, "Quickfix")
+				map("n", "<leader>d", function()
+					vim.diagnostic.open_float(nil, { scope = "line" })
+				end, "Line diagnostics")
+				map("n", "[d", vim.diagnostic.goto_prev, "Prev Diagnostic")
+				map("n", "]d", vim.diagnostic.goto_next, "Next Diagnostic")
+				map("n", "<leader>dl", vim.diagnostic.setloclist, "Set Loclist")
+				map("n", "gd", vim.lsp.buf.definition, "Goto Definition")
+				map("n", "gy", vim.lsp.buf.type_definition, "Goto Type Def")
+				map("n", "gi", vim.lsp.buf.implementation, "Goto Implementation")
+				map("n", "gr", vim.lsp.buf.references, "Goto References")
+			end,
+		})
+
+		------------------------------
 		-- Setup Conform for formatting
 		-------------------------------
 		require("conform").setup({
@@ -53,207 +104,184 @@ return {
 		--------------------------------
 		--- Setup cmp for autocompletion
 		--------------------------------
-		local cmp = require("cmp")
-		local cmp_lsp = require("cmp_nvim_lsp")
-		local capabilities = vim.tbl_deep_extend(
-			"force",
-			{},
-			vim.lsp.protocol.make_client_capabilities(),
-			cmp_lsp.default_capabilities()
-		)
 
-		local cmp_select = { behavior = cmp.SelectBehavior.Select }
+		-- setup blink.cmp for more powerful completions
+		local blink_cmp = require("blink.cmp")
+		blink_cmp.setup({
 
-		cmp.setup({
-			snippet = {
-				expand = function(args)
-					require("luasnip").lsp_expand(args.body)
-				end,
+			-- Use defaults
+			-- ["<C-p>"] = { "select_prev" },
+			-- ["<C-n>"] = { "select_next" },
+			keymap = {
+				preset = "default",
+				-- ["<CR>"] = { "accept" },
 			},
-			mapping = cmp.mapping.preset.insert({
-				["<C-p>"] = cmp.mapping.select_prev_item(cmp_select),
-				["<C-n>"] = cmp.mapping.select_next_item(cmp_select),
-				-- ["<C-y>"] = cmp.mapping.confirm({ select = true }),
-				["<CR>"] = cmp.mapping.confirm({ select = true }),
-				["<C-Space>"] = cmp.mapping.complete(),
-			}),
-			sources = cmp.config.sources({
-				-- show LSP suggestions first, then snippets, then Copilot
-				{ name = "nvim_lsp", group_index = 1 },
-				{ name = "luasnip", group_index = 1 },
-				{ name = "copilot", group_index = 2 },
-				{ name = "dictionary", group_index = 2 },
-			}, {
-				{ name = "buffer" },
-			}),
+
+			-- Use mono font variant for appearance
+			appearance = {
+				nerd_font_variant = "mono",
+			},
+
+			-- By default, you may press `<c-space>` to show the documentation.
+			-- set `auto_show = true` to show the documentation after a delay.
+			completion = {
+				documentation = { auto_show = true, auto_show_delay_ms = 500 },
+			},
+
+			-- Use the default cmp sources
+			-- TODO: figure out how to use cmp_dictionary and cmp_copilot here
+			sources = {
+				default = { "lsp", "path", "snippets", "buffer" },
+			},
+
+			-- Use lua snippets for completion
+			snippets = { preset = "luasnip" }, -- Use LuaSnip for snippets
+
+			-- Use Rust implementation for fuzzy matching
+			fuzzy = { implementation = "lua" },
+
+			-- Show a signature help window when completing functions
+			signature = { enabled = true },
 		})
 
 		----------------------------------------
 		-- Setup mason for LSP server management
 		----------------------------------------
-		require("mason").setup({})
 
-		-- Keymaps for LSP actions
-		local on_attach = function(_, bufnr)
-			local map = function(mode, lhs, rhs, desc)
-				vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, silent = true, desc = desc })
-			end
-
-			map("n", "K", vim.lsp.buf.hover, "Hover Doc")
-			map("n", "<leader>rn", vim.lsp.buf.rename, "Rename Symbol")
-			map("n", "<leader>a", vim.lsp.buf.code_action, "Code Action")
-			-- map("x", "<leader>a", vim.lsp.buf.range_code_action, "Code Action (range)")
-			map("n", "<leader>qf", function()
-				vim.lsp.buf.code_action({ apply = true, context = { only = { "quickfix" } } })
-			end, "Quickfix")
-			map("n", "<leader>d", function()
-				vim.diagnostic.open_float(nil, { scope = "line" })
-			end, "Show line diagnostics")
-
-			map("n", "[d", vim.diagnostic.goto_prev, "Prev Diagnostic")
-			map("n", "]d", vim.diagnostic.goto_next, "Next Diagnostic")
-			map("n", "<leader>dl", vim.diagnostic.setloclist, "Set Loclist")
-
-			map("n", "gd", vim.lsp.buf.definition, "Goto Definition")
-			map("n", "gy", vim.lsp.buf.type_definition, "Goto Type Def")
-			map("n", "gi", vim.lsp.buf.implementation, "Goto Implementation")
-
-			map("n", "gr", vim.lsp.buf.references, "Goto References")
-			map("n", "[g", vim.diagnostic.goto_prev, "Prev Diagnostic")
-			map("n", "]g", vim.diagnostic.goto_next, "Next Diagnostic")
-		end
-
-		--------------------
-		-- Setup LSP servers
-		--------------------
-		local lspconfig = require("lspconfig")
-
-		lspconfig.ts_ls.setup({
-			capabilities = capabilities,
-			on_attach = on_attach,
-		})
-
-		lspconfig.lua_ls.setup({
-			capabilities = capabilities,
-			on_attach = on_attach,
-			settings = {
-				Lua = {
-					diagnostics = {
-						globals = { "vim" }, -- Recognize 'vim' as a global variable
-					},
-					workspace = {
-						checkThirdParty = false, -- Disable third-party checks
-					},
-				},
-			},
-		})
-
-		lspconfig.pyright.setup({
-			capabilities = capabilities,
-			on_attach = on_attach,
-			settings = {
-				python = {
-					analysis = {
-						typeCheckingMode = "basic", -- Set type checking mode
-						autoSearchPaths = true, -- Enable automatic search paths
-						useLibraryCodeForTypes = true, -- Use library code for type inference
-					},
-				},
-			},
-		})
-
-		lspconfig.clangd.setup({
-			capabilities = capabilities,
-			on_attach = on_attach,
-			cmd = { "clangd", "--background-index", "--clang-tidy" }, -- Enable background indexing and clang-tidy
-		})
-
-		lspconfig.jsonls.setup({
-			capabilities = capabilities,
-			on_attach = on_attach,
-			settings = {
-				json = {
-					validate = { enable = true },
-				},
-			},
-		})
-
-		lspconfig.html.setup({
-			capabilities = capabilities,
-			on_attach = on_attach,
-			filetypes = { "html", "htmldjango" }, -- Add htmldjango support
-		})
-
-		lspconfig.cssls.setup({
-			capabilities = capabilities,
-			on_attach = on_attach,
-			filetypes = { "css", "scss", "less" }, -- Add support for CSS preprocessors
-		})
-
-		lspconfig.bashls.setup({
-			capabilities = capabilities,
-			on_attach = on_attach,
-			filetypes = { "sh", "bash" }, -- Add support for shell scripts
-		})
-
-		lspconfig.texlab.setup({
-			capabilities = capabilities,
-			on_attach = on_attach,
-			filetypes = { "tex", "bib" }, -- Add support for LaTeX and BibTeX
-			settings = {
-				texlab = {
-					build = {
-						executable = "latexmk",
-						args = { "-pdf", "-interaction=nonstopmode", "-synctex=1", "%f" },
-						onSave = true,
-					},
-					forwardSearch = {
-						executable = "skim",
-						args = { "--synctex-forward", "%l:1:%f", "%p" },
-					},
-				},
-			},
-		})
-
-		lspconfig.ltex_plus.setup({
-			capabilities = capabilities,
-			on_attach = on_attach,
-			filetypes = { "tex", "bib", "markdown", "text" },
-			settings = {
-				ltex = {
-					language = "en-US", -- Set default language
-					diagnosticSeverity = "information", -- Set diagnostic severity
-					dictionary = {
-						["en-US"] = { "Neovim", "LuaSnip", "cmp", "ltex", "immersification" }, -- Custom dictionary words
-					},
-					disabledRules = {
-						["en-US"] = {
-							"TOO_LONG_SENTENCE",
-							"PASSIVE_VOICE",
-							"WORDINESS",
+		-- The list of LSP servers and any custom settings
+		local servers = {
+			lua_ls = {
+				settings = {
+					Lua = {
+						completion = {
+							callSnippet = "Replace",
 						},
 					},
 				},
 			},
+
+			pyright = {
+				settings = {
+					python = {
+						analysis = {
+							typeCheckingMode = "basic", -- Set type checking mode
+						},
+					},
+				},
+			},
+
+			clangd = {
+				cmd = { "clangd", "--background-index", "--clang-tidy" }, -- Enable background indexing and clang-tidy
+			},
+
+			texlab = {
+				filetypes = { "tex", "bib" }, -- Add support for LaTeX and BibTeX
+				settings = {
+					texlab = {
+						build = {
+							executable = "latexmk",
+							args = { "-pdf", "-interaction=nonstopmode", "-synctex=1", "%f" },
+							onSave = true,
+						},
+						forwardSearch = {
+							executable = "skim",
+							args = { "--synctex-forward", "%l:1:%f", "%p" },
+						},
+					},
+				},
+			},
+
+			ltex_plus = {
+				filetypes = { "tex", "bib", "markdown", "text" },
+				settings = {
+					ltex = {
+						language = "en-US", -- Set default language
+						diagnosticSeverity = "information", -- Set diagnostic severity
+						dictionary = {
+							["en-US"] = { "immersification" }, -- Custom dictionary words
+						},
+						disabledRules = {
+							["en-US"] = {
+								"TOO_LONG_SENTENCE",
+								"PASSIVE_VOICE",
+								"WORDINESS",
+							},
+						},
+					},
+				},
+			},
+
+			html = {
+				filetypes = { "html", "htmldjango" }, -- Add htmldjango support
+			},
+
+			jsonls = {},
+			cssls = {},
+			bashls = {},
+			marksman = {},
+			ts_ls = {},
+		}
+
+		-- Define the entire list of things Mason should ensure are installed
+		local ensure_installed = vim.tbl_keys(servers)
+		vim.list_extend(ensure_installed, {
+			"stylua", -- Used to format Lua code
+			"black", -- Used to format Python code
+			"prettierd", -- Used to format JavaScript, TypeScript, HTML, CSS, JSON
+			"markdownlint", -- Used to format Markdown files
+			"bibtex-tidy", -- Used to format BibTeX files
+			"latexindent", -- Used to format LaTeX files
+			"clang-format", -- Used to format C/C++ code
 		})
+		require("mason-tool-installer").setup({ ensure_installed = ensure_installed })
+
+		-- This method does not work but supposed to be the "better" way to set up LSP servers
+		-- require("mason-lspconfig").setup({
+		-- 	ensure_installed = {}, -- explicitly set to an empty table (Kickstart populates installs via mason-tool-installer)
+		-- 	automatic_installation = false,
+		-- 	handlers = {
+		-- 		function(server_name)
+		-- 			vim.notify("Setting up LSP server: " .. server_name, vim.log.levels.INFO)
+		-- 			local server = servers[server_name] or {}
+		-- 			-- This handles overriding only values explicitly passed
+		-- 			-- certain features of an LSP (for example, turning off formatting for ts_ls)
+		-- 			server.capabilities = vim.tbl_deep_extend("force", {}, capabilities, server.capabilities or {})
+		-- 			require("lspconfig")[server_name].setup(server)
+		-- 		end,
+		-- 	},
+		-- })
+
+		-- Since the above method does not work, we use the manual way to set up LSP servers
+		local lspconfig = require("lspconfig")
+		for name, opts in pairs(servers) do
+			opts.capabilities = vim.tbl_deep_extend("force", {}, capabilities, opts.capabilities or {})
+			lspconfig[name].setup(opts)
+		end
 
 		------------------------------
 		--- Setup LuaSnip and snippets
 		------------------------------
 
-		local luasnip = require("luasnip")
-		luasnip.config.set_config({
-			history = true,
-			updateevents = "TextChanged,TextChangedI",
-		})
+		-- require("luasnip").config.set_config({
+		-- 	history = true,
+		-- 	updateevents = "TextChanged,TextChangedI",
+		-- 	dependencies = {
+		-- 		{
+		-- 			"rafamadriz/friendly-snippets",
+		-- 			config = function()
+		-- 				require("luasnip.loaders.from_vscode").lazy_load()
+		-- 				require("luasnip.loaders.from_lua").lazy_load({ paths = "~/.config/nvim/lua/snippets" })
+		-- 			end,
+		-- 		},
+		-- 	},
+		-- })
 
-		require("luasnip.loaders.from_vscode").lazy_load() -- friendly-snippets
-		require("luasnip.loaders.from_lua").lazy_load({ paths = "~/.config/nvim/lua/snippets" })
+		-- require("luasnip.loaders.from_vscode").lazy_load() -- friendly-snippets
+		-- require("luasnip.loaders.from_lua").lazy_load({ paths = "~/.config/nvim/lua/snippets" })
 
 		--------------------------------------
 		--- Setup fidget and diagnostic config
 		--------------------------------------
-		require("fidget").setup({})
 		vim.diagnostic.config({
 			severity_sort = true,
 			underline = { severity = vim.diagnostic.severity.ERROR },

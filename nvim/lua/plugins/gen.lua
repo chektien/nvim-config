@@ -3,23 +3,23 @@
 -- TODO find a cmp version of this plugin
 
 return {
-	"David-Kunz/gen.nvim",
-	config = function()
-		require("gen").setup({
-			-- Model options
-			model = "deepcoder:latest",
-			-- model = "deepseek-r1:latest",
-			-- model = "deepseek-r1:14b",
-			-- model = "deepseek-r1:32b",
-			-- model = "deepseek-r1:70b",
-			-- model = "deepseek-coder-v2",
-			-- model = "llama3.1:8b",
-			-- model = "llama3.3",
-			-- model = "mistral-small:24b",
-			-- model = "gemma:3.27b",
-			-- model = "mistral-nemo:latest",
-			host = "localhost",
-			port = "11434",
+    "David-Kunz/gen.nvim",
+    config = function()
+        require("gen").setup({
+            -- Model options
+            model = "deepcoder:latest",
+            -- model = "deepseek-r1:latest",
+            -- model = "deepseek-r1:14b",
+            -- model = "deepseek-r1:32b",
+            -- model = "deepseek-r1:70b",
+            -- model = "deepseek-coder-v2",
+            -- model = "llama3.1:8b",
+            -- model = "llama3.3",
+            -- model = "mistral-small:24b",
+            -- model = "gemma:3.27b",
+            -- model = "mistral-nemo:latest",
+            host = "localhost",
+            port = "11434",
 
 			-- Display behavior
 			display_mode = "float", -- Clean, centered popup window

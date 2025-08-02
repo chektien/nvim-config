@@ -29,7 +29,7 @@ return {
 			})
 		end, opts)
 		map("n", "<leader>/", fzf.blines, opts)
-		map("n", "<leader>b", fzf.buffers, opts)
+		map("n", "<leader><space>b", fzf.buffers, opts)
         map("n", "<leader><space>h", fzf.help_tags, opts)
 
 		-- Optional: keymap for command maps, similar to <Plug>(fzf-maps-*)
