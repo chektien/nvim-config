@@ -1,6 +1,6 @@
 -- The Neovim configuration entry point
 
--- ✨ Leader key setup early (before plugins)
+-- ✨ Leader key setup before plugins
 vim.g.mapleader = ","
 vim.g.maplocalleader = ","
 
@@ -39,4 +39,3 @@ require("lazy").setup({
 
 -- 🧪 Autocommands
 require("config.autocmds")
-

@@ -3,8 +3,11 @@
 local map = vim.keymap.set
 local opts = { noremap = true, silent = true }
 
+-- Clear search highlights when pressing <Esc>
+vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
+
 -- A backup for the default <Esc> key, e.g., useful on iPad
-map("i", "jj", "<Esc>", opts)
+vim.keymap.set("i", "jj", "<Esc>", opts)
 
 -- Working with terminals within Neovim
 map("n", "<leader>z", ":15sp term://zsh<CR>i", opts)
@@ -47,6 +50,13 @@ end
 
 -- Map <leader>ds to call the function
 vim.keymap.set("n", "<leader>ds", ":lua DeleteSwapFiles()<CR>", { noremap = true, silent = true })
+
+-- Easier navigation across splits
+--  Use CTRL+<hjkl> to switch between windows
+vim.keymap.set('n', '<C-h>', '<C-w><C-h>', { desc = 'Move focus to the left window' })
+vim.keymap.set('n', '<C-l>', '<C-w><C-l>', { desc = 'Move focus to the right window' })
+vim.keymap.set('n', '<C-j>', '<C-w><C-j>', { desc = 'Move focus to the lower window' })
+vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper window' })
 
 -----------------------------------------------
 -- 📋 Clipboard mappings using system clipboard

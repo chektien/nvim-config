@@ -1,5 +1,4 @@
--- Neovim LSP configuration with Conform for formatting,
--- Mason for managing LSP servers,
+-- Neovim LSP configuration with Conform for formatting, Mason for managing LSP servers,
 -- cmp for autocompletion,
 -- LuaSnip for snippets,
 -- fidget for LSP progress,
